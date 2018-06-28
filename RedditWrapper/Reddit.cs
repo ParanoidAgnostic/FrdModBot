@@ -1,0 +1,136 @@
+﻿using Newtonsoft.Json.Linq;
+using RedditWrapper.Models;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
+using System.Linq;
+
+namespace RedditWrapper
+{
+    public class Reddit
+    {
+        RedditUser user;
+        DateTime tokenExpiry = DateTime.MinValue;
+
+        Api redditLoginApi;
+        Api redditApi;
+
+        public Reddit(RedditApplication application, RedditUser user)
+        {
+            if (application == null) throw new ArgumentNullException("application");
+            RedditClient client = application.Client;
+            if (client == null) throw new ArgumentNullException("application.Client");
+            this.user = user ?? throw new ArgumentNullException("user");
+
+            string userAgentHeader = String.Format("DotNet:{0}:{1} (by /u/{2})", application.ApplicationName, application.ApplicationVersion, application.AuthorUsername);
+
+            redditLoginApi = new Api("https://www.reddit.com/api/v1/", userAgentHeader);
+            redditLoginApi.AuthorizeHeader = String.Format("basic {0}", Convert.ToBase64String(Encoding.UTF8.GetBytes(application.Client.ClientId + ":" + application.Client.ClientSecret)));
+
+            redditApi = new Api("https://oauth.reddit.com/", userAgentHeader);
+        }
+
+        public async Task<bool> UpdateToken()
+        {
+            DateTime requestTime = DateTime.Now;
+
+            AccessTokenResponse accessTokenResponse = await redditLoginApi.Post<AccessTokenResponse>("access_token", new Dictionary<string, string>() {
+                {"grant_type", "password"},
+                {"username", user.Username },
+                {"password", user.Password }
+            });
+                        
+            if(accessTokenResponse!=null)
+            {
+                tokenExpiry = requestTime.AddSeconds(accessTokenResponse.ExpiresIn - 300);
+                redditApi.AuthorizeHeader = String.Format("bearer {0}", accessTokenResponse.AccessToken);
+                return true;
+            }
+
+            return false;
+        }
+
+        public async Task CheckToken()
+        {
+            if (DateTime.Now > tokenExpiry) await UpdateToken();
+        }
+
+        private async Task<JToken> Get(string path)
+        {
+            await CheckToken();
+            return await redditApi.Get(path);
+        }
+
+        private async Task<T> Get<T>(string path)
+        {
+            await CheckToken();
+            return await redditApi.Get<T>(path);
+        }
+
+        public async Task<Me> Me()
+        {
+            return await Get<Me>("api/v1/me");
+        }
+
+        private async Task<Listing> GetListing(string path, ListingParameters parameters)
+        {
+            StringBuilder pathBuilder = new StringBuilder(path);
+
+            pathBuilder.Append("?show=all");
+
+            if (parameters != null)
+            {
+                if(!String.IsNullOrEmpty(parameters.After))
+                {
+                    pathBuilder.AppendFormat("&after={0}", parameters.After);
+                }
+
+                if(parameters.Count.HasValue)
+                {
+                    pathBuilder.AppendFormat("&count={0}", parameters.Count.Value);
+                }
+
+                if (parameters.Limit.HasValue)
+                {
+                    pathBuilder.AppendFormat("&limit={0}", parameters.Limit.Value);
+                }
+            }
+
+            string pathWithParameters = pathBuilder.ToString();
+
+            await CheckToken();
+
+            Item response = await Get<Item>(pathWithParameters);
+                        
+            if (response.Kind != ItemKind.Listing)
+            {
+                throw new Exception(String.Format("Expected Listing. Recieved '{0}' : {1}", response.KindString, response.Kind));
+            }
+
+            Listing listing = response.Data.ToObject<Listing>();
+            listing.Reddit = this;
+            listing.NextPath = path;
+            listing.Parameters = parameters;
+            return listing;
+        }
+
+        public async Task<Listing> ModQueue(string subreddit, ListingParameters parameters=null)
+        {
+            string path = String.IsNullOrEmpty(subreddit) ? "about/modqueue" : String.Format("r/{0}/about/modqueue", subreddit);
+
+            return await GetListing(path, parameters);
+        }
+
+        public async Task<Listing> Next(Listing listing)
+        {
+            ListingParameters parameters = new ListingParameters
+            {
+                After = listing.After,
+                Count = (listing.Parameters?.Count ?? 0) + listing.Children.Count,
+                Limit = listing.Parameters?.Limit
+            };
+            return await GetListing(listing.NextPath, parameters);
+        }
+    }
+}
