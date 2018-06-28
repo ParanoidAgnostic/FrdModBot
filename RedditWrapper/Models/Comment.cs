@@ -58,7 +58,7 @@ namespace RedditWrapper.Models
 
         [JsonConverter(typeof(UnixTimestampConverter))]
         [JsonProperty("banned_at_utc")]
-        public DateTime BannedAtUtc { get; set; }
+        public DateTime? BannedAtUtc { get; set; }
 
         [JsonProperty("gilded")]
         public int Gilded { get; set; }

@@ -47,12 +47,18 @@ namespace FrdModBot
             ListingReader modQueue = new ListingReader(await reddit.ModQueue(subreddit));
 
             List<Comment> comments = new List<Comment>();
+            List<Link> links = new List<Link>();
 
             modQueue.CommentHandler = comment =>
             {
                 comments.Add(comment);
             };
-                        
+
+            modQueue.LinkHandler = link =>
+            {
+                links.Add(link);
+            };
+
             await modQueue.Handle();
             
             return;

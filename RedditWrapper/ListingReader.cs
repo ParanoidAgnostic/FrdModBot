@@ -20,7 +20,9 @@ namespace RedditWrapper
         }
 
         public Action<Comment> CommentHandler { get; set; }
-        
+
+        public Action<Link> LinkHandler { get; set; }
+
         public async Task<bool> MoveNext()
         {
             await mutex.WaitAsync().ConfigureAwait(false);
@@ -89,6 +91,9 @@ namespace RedditWrapper
                 {
                     case ItemKind.Comment:
                         CommentHandler?.Invoke(i.GetComment());
+                        break;
+                    case ItemKind.Link:
+                        LinkHandler?.Invoke(i.GetLink());
                         break;
                 }
             }, condition);

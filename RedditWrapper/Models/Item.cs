@@ -32,5 +32,10 @@ namespace RedditWrapper.Models
         {
             return Data.ToObject<Comment>();
         }
+
+        public Link GetLink()
+        {
+            return Data.ToObject<Link>();
+        }
     }
 }
