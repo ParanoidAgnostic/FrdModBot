@@ -10,13 +10,13 @@ This configures the subreddit to work with and the security details for both the
 Use the following JSON a template:
 
     {
-       subreddit : "[SUBREDDIT]",
-	client : {
-	    id : "[CLIENT ID]",
-	    secret : "[CLIENT SECRET]"
-	},
-	user : {
-	    username : "[USERNAME]",
+        subreddit : "[SUBREDDIT]",
+        client : {
+            id : "[CLIENT ID]",
+            secret : "[CLIENT SECRET]"
+        },
+        user : {
+            username : "[USERNAME]",
             password : "[PASSWORD]"
-	 }
+        }
     }
