@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using RedditWrapper;
 using RedditWrapper.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -58,9 +59,21 @@ namespace FrdModBot
             {
                 links.Add(link);
             };
-
+                        
             await modQueue.Handle();
-            
+
+            foreach (Comment comment in comments)
+            {
+                if (!String.IsNullOrEmpty(comment.ParentId))
+                {
+                    Comment parent = await reddit.GetComment(comment.Subreddit,comment.LinkId,comment.ParentId);
+                    if (parent.Replies != null)
+                    {
+                        var x = 1;
+                    }                        
+                }
+            }
+
             return;
         }
     }
