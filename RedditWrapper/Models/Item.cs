@@ -19,7 +19,7 @@ namespace RedditWrapper.Models
         {
             get
             {
-                return ItemKindHelpers.FromStringValue(KindString);
+                return ItemHelpers.KindFromStringValue(KindString);
             }
         }
 

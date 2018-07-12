@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using RedditWrapper;
+using RedditWrapper.Helpers;
 using RedditWrapper.Models;
 using System;
 using System.Collections.Generic;
@@ -66,11 +67,26 @@ namespace FrdModBot
             {
                 if (!String.IsNullOrEmpty(comment.ParentId))
                 {
-                    Comment parent = await reddit.GetComment(comment.Subreddit,comment.LinkId,comment.ParentId);
-                    if (parent.Replies != null)
+                    ItemKind kind = ItemHelpers.KindFromItemId(comment.ParentId);
+
+                    switch (kind)
                     {
-                        var x = 1;
-                    }                        
+                        case ItemKind.Comment:
+                            {
+                                Comment parent = await reddit.GetComment(comment.LinkId, comment.ParentId);
+                                if (parent.Replies != null)
+                                {
+                                    var x = 1;
+                                }
+                            }
+                            break;
+                        case ItemKind.Link:
+                            {
+                                Link parent = await reddit.GetLink(comment.ParentId);
+                                var x = parent.NumComments;
+                            }                            
+                            break;
+                    }                                          
                 }
             }
 

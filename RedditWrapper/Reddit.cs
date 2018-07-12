@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
+using RedditWrapper.Helpers;
 
 namespace RedditWrapper
 {
@@ -15,7 +16,7 @@ namespace RedditWrapper
 
         Api redditLoginApi;
         Api redditApi;
-
+        
         public Reddit(RedditApplication application, RedditUser user)
         {
             if (application == null) throw new ArgumentNullException("application");
@@ -128,7 +129,37 @@ namespace RedditWrapper
             return await GetListing(listing.NextPath, parameters);
         }
 
-        public async Task<Comment> GetComment(string subreddit, string linkId, string commentId)
+        public async Task<Link> GetLink(string linkId)
+        {
+            string path = String.Format("/api/info.json?id={0}", linkId);
+
+            await CheckToken();
+
+            Item response = await Get<Item>(path);
+
+            if (response.Kind != ItemKind.Listing)
+            {
+                throw new Exception(String.Format("Expected Listing. Recieved '{0}' : {1}", response.KindString, response.Kind));
+            }
+
+            Listing listing = response.GetListing();
+
+            if (listing.Children.Count != 1)
+            {
+                throw new Exception(String.Format("Expected Single Child. Recieved {0}", listing.Children.Count));
+            }
+
+            Item child = listing.Children.First();
+
+            if (child.Kind != ItemKind.Link)
+            {
+                throw new Exception(String.Format("Expected Link. Recieved '{0}' : {1}", child.KindString, child.Kind));
+            }
+
+            return child.GetLink();
+        }
+
+        public async Task<Comment> GetComment(string commentId)
         {
             string path = String.Format("/api/info.json?id={0}", commentId);
 
@@ -152,7 +183,42 @@ namespace RedditWrapper
 
             if (child.Kind != ItemKind.Comment)
             {
-                throw new Exception(String.Format("Expected Comment. Recieved '{0}' : {1}", response.KindString, response.Kind));
+                throw new Exception(String.Format("Expected Comment. Recieved '{0}' : {1}", child.KindString, child.Kind));
+            }
+
+            return child.GetComment();
+        }
+
+        public async Task<Comment> GetComment(string linkId, string commentId)
+        {
+            string path = String.Format("/comments/{0}.json?comment={1}", ItemHelpers.GetShortId(linkId), ItemHelpers.GetShortId(commentId));
+
+            await CheckToken();
+
+            Item[] response = await Get<Item[]>(path);
+            
+            if(response.Length!=2)
+            {
+                throw new Exception(String.Format("Expected 2 Items. Recieved '{0}'", response.Length));
+            }
+                        
+            if (response[1].Kind != ItemKind.Listing)
+            {
+                throw new Exception(String.Format("Expected Listing. Recieved '{0}' : {1}", response[1].KindString, response[1].Kind));
+            }
+
+            Listing listing = response[1].GetListing();
+
+            if (listing.Children.Count != 1)
+            {
+                throw new Exception(String.Format("Expected Single Child. Recieved {0}", listing.Children.Count));
+            }
+
+            Item child = listing.Children.First();
+
+            if (child.Kind != ItemKind.Comment)
+            {
+                throw new Exception(String.Format("Expected Comment. Recieved '{0}' : {1}", child.KindString, child.Kind));
             }
 
             return child.GetComment();

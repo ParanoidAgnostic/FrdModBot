@@ -17,12 +17,23 @@ namespace RedditWrapper.Helpers
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            return reader.Value == null ? _epoch : TimeFromUnixTimestamp((double)reader.Value);
+            object value = reader.Value;
+            double? valueDouble = value as double?;
+            if(valueDouble.HasValue) return TimeFromUnixTimestamp(valueDouble.Value);
+            long? valueLong = value as long?;
+            if (valueLong.HasValue) return TimeFromUnixTimestamp(valueLong.Value);
+            return null;
         }
 
         private static DateTime TimeFromUnixTimestamp(double unixTimestamp)
         {
             long unixTimeStampInTicks = (long)(unixTimestamp * TimeSpan.TicksPerSecond);
+            return new DateTime(_epoch.Ticks + unixTimeStampInTicks);
+        }
+
+        private static DateTime TimeFromUnixTimestamp(long unixTimestamp)
+        {
+            long unixTimeStampInTicks = unixTimestamp * TimeSpan.TicksPerSecond;
             return new DateTime(_epoch.Ticks + unixTimeStampInTicks);
         }
 
